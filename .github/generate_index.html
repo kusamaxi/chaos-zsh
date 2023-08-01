@@ -1,0 +1,31 @@
+name: Generate index.html
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Generate index.html
+      run: |
+        echo '<!--' > index.html
+        cat tools/install.sh >> index.html
+        echo '-->' >> index.html
+        cat <<EOF >>index.html
+        <html>
+        <body>
+        This page is used to distribute a shell script.
+        </body>
+        </html>
+        EOF
+    - name: Commit and push
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add index.html
+        git commit -m "Update index.html from install.sh" && git push origin master || echo "No changes to commit"
