@@ -34,7 +34,7 @@ install_chaos_zsh() {
 	if [ ! -d ~/.oh-my-zsh/custom/themes ]; then
 		mkdir -p ~/.oh-my-zsh/custom/themes
 	fi
-	curl -L https://raw.github.com/kusamaxi/chaos-zsh/master/chaos.zsh-theme --output ~/.oh-my-zsh/custom/themes/chaos.zsh-theme
+	curl -L -H 'Cache-Control: no-cache' https://raw.github.com/kusamaxi/chaos-zsh/master/chaos.zsh-theme --output ~/.oh-my-zsh/custom/themes/chaos.zsh-theme
 	if [ -f ~/.zshrc ]; then
 		sed -i.bak 's/ZSH_THEME=".*"/ZSH_THEME="chaos"/g' ~/.zshrc
 	else
