@@ -49,7 +49,7 @@ function prompt_char() {
     command git branch &>/dev/null 2>&1 && echo "%{$fg[green]%}±%{$reset_color%}" && return
     command hg root &>/dev/null 2>&1 && echo "%{$fg_bold[red]%}☿%{$reset_color%}" && return
     command darcs show repo &>/dev/null 2>&1 && echo "%{$fg_bold[green]%}❉%{$reset_color%}" && return
-    echo "➜"
+    echo "🕸"
   fi
 }
 
