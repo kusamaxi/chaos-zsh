@@ -77,5 +77,4 @@ git_time_since_commit() {
   fi
 }
 
-
 RPROMPT='${return_status}$(git_time_since_commit)$(git_prompt_status)$(job_indicator)%{$reset_color%}'
