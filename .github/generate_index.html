@@ -23,6 +23,8 @@ jobs:
         </body>
         </html>
         EOF
+    - name: Ensure CNAME file
+      run: echo 'zsh.expectchaos.com' > CNAME
     - name: Commit and push
       run: |
         git config --local user.email "action@github.com"
