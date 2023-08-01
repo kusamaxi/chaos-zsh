@@ -70,12 +70,12 @@ function virtualenv_prompt() {
 
 # Git: time since last commit
 git_time_since_commit() {
-  if [ -d .git ] || git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
     git_last_commit=$(git log --pretty=format:'%at' -1)
     git_time_diff=$(( $(date +%s) - ${git_last_commit} ))
-    git_time_since="$(($git_time_diff / 60))m"
-    echo " | Last commit: ${git_time_since} ago"
+    printf " | Last commit: %dm ago" $((git_time_diff / 60))
   fi
 }
+
 
 RPROMPT='${return_status}$(git_time_since_commit)$(git_prompt_status)$(job_indicator)%{$reset_color%}'
