@@ -33,6 +33,5 @@ or another similar tool.
 #### via curl
 
 ```sh
-sh -c "$(curl -fsSL
-https://raw.github.com/kusamaxi/chaos-zsh/master/tools/install.sh)"
+sh -c "$(curl -fsSL https://raw.github.com/kusamaxi/chaos-zsh/master/tools/install.sh)"
 ```
