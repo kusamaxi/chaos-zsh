@@ -1,4 +1,4 @@
-# chaos.zsh-theme
+# chaos.zsh-theme, based on dogenpunk and smt.
 
 MODE_INDICATOR="%{$fg_bold[red]%}❮%{$reset_color%}%{$fg[red]%}❮❮%{$reset_color%}"
 local return_status="%{$fg[red]%}%(?..⏎)%{$reset_color%} "
@@ -32,24 +32,63 @@ PROMPT='%{$fg_bold[green]%}%n@%m%{$reset_color%} $(virtualenv_prompt)%{$fg_bold[
 %{$fg[cyan]%}%!%{$reset_color%} $(prompt_char) '
 
 # Right side prompt
-RPROMPT='${return_status}$(git_time_since_commit)$(git_prompt_status)%{$reset_color%}'
-
-# Time the execution of a command and display a message if it took too long.
-preexec() { precmd_timer=$(date +%s) }
-precmd() { elapsed=$(( $(date +%s) - $precmd_timer ))
-           if [[ $elapsed -gt 3 ]]; then
-               echo "Execution time: $elapsed seconds"
-           fi }
+RPROMPT='${return_status}$(git_time_since_commit)$(git_prompt_status)$(job_indicator)%{$reset_color%}'
 
 # Prompt character
 function prompt_char() {
-  if [[ $? -ne 0 ]]; then
-    echo "%{$fg[red]%}➜%{$reset_color%}"
-  else
-    command git branch &>/dev/null 2>&1 && echo "%{$fg[green]%}±%{$reset_color%}" && return
-    command hg root &>/dev/null 2>&1 && echo "%{$fg_bold[red]%}☿%{$reset_color%}" && return
-    command darcs show repo &>/dev/null 2>&1 && echo "%{$fg_bold[green]%}❉%{$reset_color%}" && return
-    echo "🕸"
+  command git branch &>/dev/null 2>&1 && echo "%{$fg[green]%}±%{$reset_color%}" && return
+  command hg root &>/dev/null 2>&1 && echo "%{$fg_bold[red]%}☿%{$reset_color%}" && return
+  command darcs show repo &>/dev/null 2>&1 && echo "%{$fg_bold[green]%}❉%{$reset_color%}" && return
+  echo "🕸"
+}
+
+# Determine the time since last commit. If branch is clean,
+# use a neutral color, otherwise colors will vary according to time.
+function git_time_since_commit() {
+    local COLOR MINUTES HOURS DAYS SUB_HOURS SUB_MINUTES
+    local last_commit seconds_since_last_commit
+
+    # Only proceed if there is actually a commit
+    if ! last_commit=$(command git -c log.showSignature=false log --pretty=format:'%at' -1 2>/dev/null); then
+        echo "[$ZSH_THEME_GIT_TIME_SINCE_COMMIT_NEUTRAL~%{$reset_color%}]"
+        return
+    fi
+
+    # Totals
+    seconds_since_last_commit=$(( EPOCHSECONDS - last_commit ))
+    MINUTES=$(( seconds_since_last_commit / 60 ))
+    HOURS=$(( MINUTES / 60 ))
+
+    # Sub-hours and sub-minutes
+    DAYS=$(( HOURS / 24 ))
+    SUB_HOURS=$(( HOURS % 24 ))
+    SUB_MINUTES=$(( MINUTES % 60 ))
+
+    if [[ -z "$(command git status -s 2>/dev/null)" ]]; then
+        COLOR="$ZSH_THEME_GIT_TIME_SINCE_COMMIT_NEUTRAL"
+    else
+        if [[ "$MINUTES" -gt 30 ]]; then
+            COLOR="$ZSH_THEME_GIT_TIME_SINCE_COMMIT_LONG"
+        elif [[ "$MINUTES" -gt 10 ]]; then
+            COLOR="$ZSH_THEME_GIT_TIME_SHORT_COMMIT_MEDIUM"
+        else
+            COLOR="$ZSH_THEME_GIT_TIME_SINCE_COMMIT_SHORT"
+        fi
+    fi
+
+    if [[ "$HOURS" -gt 24 ]]; then
+        echo "[${COLOR}${DAYS}d${SUB_HOURS}h${SUB_MINUTES}m%{$reset_color%}]"
+    elif [[ "$MINUTES" -gt 60 ]]; then
+        echo "[${COLOR}${HOURS}h${SUB_MINUTES}m%{$reset_color%}]"
+    else
+        echo "[${COLOR}${MINUTES}m%{$reset_color%}]"
+    fi
+}
+
+# Python virtual environment indicator
+function virtualenv_prompt() {
+  if [[ -n "$VIRTUAL_ENV" ]]; then
+    echo "%{$fg_bold[magenta]%}($(basename $VIRTUAL_ENV))%{$reset_color%}"
   fi
 }
 
@@ -60,21 +99,3 @@ function job_indicator() {
     echo "[$num_jobs jobs]"
   fi
 }
-
-# Python virtual environment indicator
-function virtualenv_prompt() {
-  if [[ -n "$VIRTUAL_ENV" ]]; then
-    echo "%{$fg_bold[magenta]%}($(basename $VIRTUAL_ENV))%{$reset_color%}"
-  fi
-}
-
-# Git: time since last commit
-git_time_since_commit() {
-  if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-    git_last_commit=$(git log --pretty=format:'%at' -1)
-    git_time_diff=$(( $(date +%s) - ${git_last_commit} ))
-    printf " | Last commit: %dm ago" $((git_time_diff / 60))
-  fi
-}
-
-RPROMPT='${return_status}$(git_time_since_commit)$(git_prompt_status)$(job_indicator)%{$reset_color%}'
