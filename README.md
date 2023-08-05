@@ -4,15 +4,13 @@
 Chaos-Zsh is a theme for Oh-My-Zsh shell, inspired by `dogenpunk` and `smt` themes,
 optimized for Git users and Python developers. This theme includes features
 such as detailed Git status, Python virtual environment indicator, enhanced
-error indication, execution time display for long-running commands, and
-background jobs indicator.
+error indication and background jobs indicator.
 
 ## Features
 
-- Detailed Git status
+- Detailed Git status && time since last commit
 - Python virtual environment indicator
 - Enhanced error indication
-- Execution time for long-running commands
 - Background jobs indicator
 
 ## Installation
