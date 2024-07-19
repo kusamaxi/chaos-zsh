@@ -28,7 +28,7 @@ ZSH_THEME_GIT_TIME_SINCE_COMMIT_LONG="%{$fg[red]%}"
 ZSH_THEME_GIT_TIME_SINCE_COMMIT_NEUTRAL="%{$fg[cyan]%}"
 
 # Left side prompt
-PROMPT='%{$fg_bold[green]%}%n@%m%{$reset_color%} $(virtualenv_prompt)%{$fg_bold[blue]%} 𓅨 %{$fg[cyan]%}% ~ %{$reset_color%}$(git_prompt_short_sha)$(git_prompt_info)
+PROMPT='${MODE_INDICATOR} %{$fg_bold[green]%}%n@%m%{$reset_color%} $(virtualenv_prompt)%{$fg_bold[blue]%} 𓅨 %{$fg[cyan]%}% ~ %{$reset_color%}$(git_prompt_short_sha)$(git_prompt_info)
 %{$fg[cyan]%}%!%{$reset_color%} $(prompt_char) '
 
 # Right side prompt
@@ -99,3 +99,20 @@ function job_indicator() {
     echo "[$num_jobs jobs]"
   fi
 }
+
+function zle-keymap-select {
+  if [[ ${KEYMAP} == vicmd ]]; then
+    MODE_INDICATOR="%{$fg_bold[red]%}n❮%{$reset_color%}"
+  else
+    MODE_INDICATOR="%{$fg_bold[green]%}i❯%{$reset_color%}"
+  fi
+  zle reset-prompt
+}
+
+function zle-line-init {
+  MODE_INDICATOR="%{$fg_bold[green]%}i❯%{$reset_color%}"
+  zle reset-prompt
+}
+
+zle -N zle-keymap-select
+zle -N zle-line-init
