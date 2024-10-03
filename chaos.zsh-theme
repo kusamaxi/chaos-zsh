@@ -1,117 +1,168 @@
-# chaos.zsh-theme, based on dogenpunk and smt.
+# Optimized chaos.zsh-theme, based on dogenpunk and smt
+# Includes performance improvements and error code emojis
 
-MODE_INDICATOR="%{$fg_bold[red]%}❮%{$reset_color%}%{$fg[red]%}❮❮%{$reset_color%}"
-local return_status="%{$fg[red]%}%(?..⏎)%{$reset_color%} "
+# Precompute static parts of the prompt
+_CHAOS_USER_HOST="%F{green}%B%n@%m%b%f"
+_CHAOS_PATH="%F{cyan}%~%f"
+_CHAOS_PROMPT_CHAR="𓅨"
 
-# Git statuses
-ZSH_THEME_GIT_PROMPT_PREFIX="|%{$reset_color%}"
-ZSH_THEME_GIT_PROMPT_SUFFIX="%{$reset_color%}"
-ZSH_THEME_GIT_PROMPT_DIRTY="%{$fg_bold[red]%}⚡%{$reset_color%}"
-ZSH_THEME_GIT_PROMPT_AHEAD="%{$fg_bold[red]%}!%{$reset_color%}"
-ZSH_THEME_GIT_PROMPT_CLEAN="%{$fg_bold[green]%}✓%{$reset_color%}"
+# Git status symbols (precomputed for performance)
+_CHAOS_GIT_DIRTY="%F{red}%B⚡%b%f"
+_CHAOS_GIT_CLEAN="%F{green}%B✓%b%f"
+_CHAOS_GIT_AHEAD="%F{red}%B!%b%f"
+_CHAOS_GIT_ADDED="%F{green}✚%f"
+_CHAOS_GIT_MODIFIED="%F{blue}✹%f"
+_CHAOS_GIT_DELETED="%F{red}✖%f"
+_CHAOS_GIT_RENAMED="%F{magenta}➜%f"
+_CHAOS_GIT_UNMERGED="%F{yellow}═%f"
+_CHAOS_GIT_UNTRACKED="%F{cyan}✭%f"
 
-ZSH_THEME_GIT_PROMPT_ADDED="%{$fg[green]%} ✚"
-ZSH_THEME_GIT_PROMPT_MODIFIED="%{$fg[blue]%} ✹"
-ZSH_THEME_GIT_PROMPT_DELETED="%{$fg[red]%} ✖"
-ZSH_THEME_GIT_PROMPT_RENAMED="%{$fg[magenta]%} ➜"
-ZSH_THEME_GIT_PROMPT_UNMERGED="%{$fg[yellow]%} ═"
-ZSH_THEME_GIT_PROMPT_UNTRACKED="%{$fg[cyan]%} ✭"
+# Git time colors
+_CHAOS_GIT_TIME_SHORT="%F{green}"
+_CHAOS_GIT_TIME_MEDIUM="%F{yellow}"
+_CHAOS_GIT_TIME_LONG="%F{red}"
+_CHAOS_GIT_TIME_NEUTRAL="%F{cyan}"
 
-# Format for git_prompt_long_sha() and git_prompt_short_sha()
-ZSH_THEME_GIT_PROMPT_SHA_BEFORE="➤ %{$fg_bold[yellow]%}"
-ZSH_THEME_GIT_PROMPT_SHA_AFTER="%{$reset_color%}"
+# Error code to emoji mapping
+typeset -A _CHAOS_ERROR_EMOJIS
+_CHAOS_ERROR_EMOJIS=(
+  1 "💥"    # General errors
+  2 "🚫"    # Misuse of shell builtins
+  126 "🔒"  # Command invoked cannot execute
+  127 "🤷"  # Command not found
+  128 "⚠️"   # Invalid exit argument
+  129 "🚦"  # SIGHUP
+  130 "🛑"  # SIGINT
+  131 "🧨"  # SIGQUIT
+  132 "🔬"  # SIGILL
+  133 "🪤"  # SIGTRAP
+  134 "💣"  # SIGABRT
+  135 "🧮"  # SIGBUS
+  136 "🔥"  # SIGFPE
+  137 "💀"  # SIGKILL
+  139 "🐛"  # SIGSEGV
+  141 "📡"  # SIGPIPE
+  143 "🔪"  # SIGTERM
+)
 
-# Colors vary depending on time lapsed.
-ZSH_THEME_GIT_TIME_SINCE_COMMIT_SHORT="%{$fg[green]%}"
-ZSH_THEME_GIT_TIME_SHORT_COMMIT_MEDIUM="%{$fg[yellow]%}"
-ZSH_THEME_GIT_TIME_SINCE_COMMIT_LONG="%{$fg[red]%}"
-ZSH_THEME_GIT_TIME_SINCE_COMMIT_NEUTRAL="%{$fg[cyan]%}"
+_chaos_error_emoji() {
+  local code=$1
+  echo "${_CHAOS_ERROR_EMOJIS[$code]:-🔴}"
+}
 
-# Left side prompt
-PROMPT='${MODE_INDICATOR} %{$fg_bold[green]%}%n@%m%{$reset_color%} $(virtualenv_prompt)%{$fg_bold[blue]%} 𓅨 %{$fg[cyan]%}% ~ %{$reset_color%}$(git_prompt_short_sha)$(git_prompt_info)
-%{$fg[cyan]%}%!%{$reset_color%} $(prompt_char) '
+# Efficient git information functions
+_chaos_git_info() {
+  git symbolic-ref HEAD 2> /dev/null | sed 's/^refs\/heads\///'
+}
 
-# Right side prompt
-RPROMPT='${return_status}$(git_time_since_commit)$(git_prompt_status)$(job_indicator)%{$reset_color%}'
+_chaos_git_status() {
+  [[ -n "$(git status --porcelain 2> /dev/null)" ]] && echo "$_CHAOS_GIT_DIRTY" || echo "$_CHAOS_GIT_CLEAN"
+}
 
-# Prompt character
-function prompt_char() {
-  command git branch &>/dev/null 2>&1 && echo "%{$fg[green]%}±%{$reset_color%}" && return
-  command hg root &>/dev/null 2>&1 && echo "%{$fg_bold[red]%}☿%{$reset_color%}" && return
-  command darcs show repo &>/dev/null 2>&1 && echo "%{$fg_bold[green]%}❉%{$reset_color%}" && return
+_chaos_git_prompt_status() {
+  local STATUS=""
+  local -a FLAGS
+  FLAGS=('--porcelain')
+  
+  if [[ "$(command git config --get oh-my-zsh.hide-status 2>/dev/null)" != "1" ]]; then
+    FLAGS+='--branch'
+  fi
+  
+  local git_status="$(command git status ${FLAGS} 2> /dev/null | tail -n1)"
+  
+  if [[ -n $git_status ]]; then
+    STATUS="$ZSH_THEME_GIT_PROMPT_DIRTY"
+  else
+    STATUS="$ZSH_THEME_GIT_PROMPT_CLEAN"
+  fi
+  
+  if $(echo "$git_status" | grep '^## [^ ]\+ .*ahead' &> /dev/null); then
+    STATUS="$STATUS$_CHAOS_GIT_AHEAD"
+  fi
+  
+  echo "$git_status" | while IFS= read -r line; do
+    if [[ $line == " M "* ]]; then STATUS="$STATUS$_CHAOS_GIT_MODIFIED"; fi
+    if [[ $line == "?? "* ]]; then STATUS="$STATUS$_CHAOS_GIT_UNTRACKED"; fi
+    if [[ $line == " D "* ]]; then STATUS="$STATUS$_CHAOS_GIT_DELETED"; fi
+    if [[ $line == "R  "* ]]; then STATUS="$STATUS$_CHAOS_GIT_RENAMED"; fi
+    if [[ $line == "A  "* ]]; then STATUS="$STATUS$_CHAOS_GIT_ADDED"; fi
+    if [[ $line == "UU "* ]]; then STATUS="$STATUS$_CHAOS_GIT_UNMERGED"; fi
+  done
+  
+  echo $STATUS
+}
+
+_chaos_git_prompt() {
+  local branch=$(_chaos_git_info)
+  [[ -n "$branch" ]] && echo "|$branch$(_chaos_git_status)"
+}
+
+_chaos_git_sha() {
+  local sha
+  sha=$(git rev-parse --short HEAD 2> /dev/null) || return
+  echo "➤ %F{yellow}%B$sha%b%f"
+}
+
+_chaos_git_time_since_commit() {
+  local last_commit now seconds_since_last_commit minutes hours days color
+  last_commit=$(git log -1 --pretty=format:%at 2> /dev/null) || return
+  now=$(date +%s)
+  seconds_since_last_commit=$((now - last_commit))
+  minutes=$((seconds_since_last_commit / 60))
+  hours=$((minutes / 60))
+  days=$((hours / 24))
+
+  if [[ -z "$(git status --porcelain 2>/dev/null)" ]]; then
+    color="$_CHAOS_GIT_TIME_NEUTRAL"
+  elif [[ $minutes -gt 30 ]]; then
+    color="$_CHAOS_GIT_TIME_LONG"
+  elif [[ $minutes -gt 10 ]]; then
+    color="$_CHAOS_GIT_TIME_MEDIUM"
+  else
+    color="$_CHAOS_GIT_TIME_SHORT"
+  fi
+
+  if [[ $hours -gt 24 ]]; then
+    echo "[${color}${days}d$((hours % 24))h$((minutes % 60))m%f]"
+  elif [[ $minutes -gt 60 ]]; then
+    echo "[${color}${hours}h$((minutes % 60))m%f]"
+  else
+    echo "[${color}${minutes}m%f]"
+  fi
+}
+
+_chaos_venv_prompt() {
+  [[ -n "$VIRTUAL_ENV" ]] && echo "%F{magenta}%B(${VIRTUAL_ENV:t})%b%f"
+}
+
+_chaos_job_count() {
+  local job_count="${(%):-%j}"
+  [[ "$job_count" -gt 0 ]] && echo "[$job_count jobs]"
+}
+
+_chaos_prompt_char() {
+  git branch &>/dev/null 2>&1 && echo "%F{green}±%f" && return
+  hg root &>/dev/null 2>&1 && echo "%F{red}%B☿%b%f" && return
+  darcs show repo &>/dev/null 2>&1 && echo "%F{green}%B❉%b%f" && return
   echo "🕸"
 }
 
-# Determine the time since last commit. If branch is clean,
-# use a neutral color, otherwise colors will vary according to time.
-function git_time_since_commit() {
-    local COLOR MINUTES HOURS DAYS SUB_HOURS SUB_MINUTES
-    local last_commit seconds_since_last_commit
+_chaos_prompt() {
+  local exit_code=$?
+  local mode_indicator="${${KEYMAP/vicmd/"%F{red}%Bn❮%b%f"}:-"%F{green}%Bi❯%b%f"}"
+  
+  PROMPT="$mode_indicator $_CHAOS_USER_HOST $(_chaos_venv_prompt)%F{blue}%B$_CHAOS_PROMPT_CHAR%b%f $_CHAOS_PATH $(_chaos_git_sha)$(_chaos_git_prompt)
+%F{cyan}%!%f $(_chaos_prompt_char) "
 
-    # Only proceed if there is actually a commit
-    if ! last_commit=$(command git -c log.showSignature=false log --pretty=format:'%at' -1 2>/dev/null); then
-        echo "[$ZSH_THEME_GIT_TIME_SINCE_COMMIT_NEUTRAL~%{$reset_color%}]"
-        return
-    fi
-
-    # Totals
-    seconds_since_last_commit=$(( EPOCHSECONDS - last_commit ))
-    MINUTES=$(( seconds_since_last_commit / 60 ))
-    HOURS=$(( MINUTES / 60 ))
-
-    # Sub-hours and sub-minutes
-    DAYS=$(( HOURS / 24 ))
-    SUB_HOURS=$(( HOURS % 24 ))
-    SUB_MINUTES=$(( MINUTES % 60 ))
-
-    if [[ -z "$(command git status -s 2>/dev/null)" ]]; then
-        COLOR="$ZSH_THEME_GIT_TIME_SINCE_COMMIT_NEUTRAL"
-    else
-        if [[ "$MINUTES" -gt 30 ]]; then
-            COLOR="$ZSH_THEME_GIT_TIME_SINCE_COMMIT_LONG"
-        elif [[ "$MINUTES" -gt 10 ]]; then
-            COLOR="$ZSH_THEME_GIT_TIME_SHORT_COMMIT_MEDIUM"
-        else
-            COLOR="$ZSH_THEME_GIT_TIME_SINCE_COMMIT_SHORT"
-        fi
-    fi
-
-    if [[ "$HOURS" -gt 24 ]]; then
-        echo "[${COLOR}${DAYS}d${SUB_HOURS}h${SUB_MINUTES}m%{$reset_color%}]"
-    elif [[ "$MINUTES" -gt 60 ]]; then
-        echo "[${COLOR}${HOURS}h${SUB_MINUTES}m%{$reset_color%}]"
-    else
-        echo "[${COLOR}${MINUTES}m%{$reset_color%}]"
-    fi
+  RPROMPT="%(?..$(_chaos_error_emoji $exit_code) )$(_chaos_git_time_since_commit)$(_chaos_git_prompt_status)$(_chaos_job_count)%f"
 }
 
-# Python virtual environment indicator
-function virtualenv_prompt() {
-  if [[ -n "$VIRTUAL_ENV" ]]; then
-    echo "%{$fg_bold[magenta]%}($(basename $VIRTUAL_ENV))%{$reset_color%}"
-  fi
-}
+autoload -Uz add-zsh-hook
+add-zsh-hook precmd _chaos_prompt
 
-# Show number of running background jobs
-function job_indicator() {
-  num_jobs=$(jobs -l | wc -l)
-  if [[ num_jobs -gt 0 ]]; then
-    echo "[$num_jobs jobs]"
-  fi
-}
-
-function zle-keymap-select {
-  if [[ ${KEYMAP} == vicmd ]]; then
-    MODE_INDICATOR="%{$fg_bold[red]%}n❮%{$reset_color%}"
-  else
-    MODE_INDICATOR="%{$fg_bold[green]%}i❯%{$reset_color%}"
-  fi
+function zle-keymap-select zle-line-init {
   zle reset-prompt
-}
-
-function zle-line-init {
-  MODE_INDICATOR="%{$fg_bold[green]%}i❯%{$reset_color%}"
-  zle reset-prompt
+  zle -R
 }
 
 zle -N zle-keymap-select
