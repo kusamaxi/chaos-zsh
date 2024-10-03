@@ -1,4 +1,4 @@
-# oh my zsh
+# Disable globbing for performance
 set -o noglobdots
 set -o noglobalrcs
 
@@ -10,10 +10,7 @@ plugins=(git)
 # Function to improve performance
 zsh_optimized_setup() {
   autoload -Uz compinit promptinit
-  for dump in ~/.zcompdump(N.mh+24); do
-    compinit
-  done
-  compinit -C
+  [[ -f ~/.zcompdump ]] && compinit -C
   promptinit
 }
 
@@ -22,10 +19,7 @@ autoload -Uz add-zsh-hook
 auto_source_venv() {
   local venv_dir
   for venv_dir in .venv venv; do
-    if [[ -d $venv_dir ]]; then
-      source "$venv_dir/bin/activate"
-      return
-    fi
+    [[ -d $venv_dir ]] && { source "$venv_dir/bin/activate"; return; }
   done
 }
 add-zsh-hook chpwd auto_source_venv
@@ -39,16 +33,16 @@ export PULSE_RUNTIME_PATH=/run/user/1000/pulse
 export NIX_PATH=nixpkgs=https://nixos.org/channels/nixos-unstable
 export NVM_DIR="$HOME/.nvm"
 
-# PATH adjustments (use typeset for efficiency)
+# PATH adjustments (typeset for efficiency)
 typeset -U path
 path=(
-  $path
   $HOME/.cargo/bin
   $HOME/go/bin
   $HOME/.bun/bin
   $HOME/.local/bin
   /usr/lib/node_modules/.bin
   $HOME/.npm-global/bin
+  $path
 )
 
 # Aliases
@@ -63,14 +57,13 @@ alias rbl='cd ~/rome/environments/ansible/'
 bindkey -v
 bindkey '^Z' vi-cmd-mode
 
-# Conditional sources (use [[ for better performance)
+# Conditional sources (use [[ for efficiency)
 [[ -s "$HOME/.bun/_bun" ]] && source "$HOME/.bun/_bun"
 [[ -s "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
 [[ -e "$HOME/.nix-profile/etc/profile.d/nix.sh" ]] && source "$HOME/.nix-profile/etc/profile.d/nix.sh"
 
-# NVM setup (consider lazy loading for better performance)
+# NVM setup (lazy loading for better performance)
 if [[ -s "$NVM_DIR/nvm.sh" ]]; then
-  # Lazy load NVM
   nvm() {
     unset -f nvm
     source "$NVM_DIR/nvm.sh"
@@ -79,11 +72,14 @@ if [[ -s "$NVM_DIR/nvm.sh" ]]; then
   }
 fi
 
-# Run optimized setup
+# Optimized setup execution
 zsh_optimized_setup
 
 # Load Oh My Zsh
-source $ZSH/oh-my-zsh.sh
+source "$ZSH/oh-my-zsh.sh"
+
+# Source secret environment variables (skip if not found)
+[[ -f "$HOME/.secrets" ]] && source "$HOME/.secrets"
 
 # Performance: Compile zshrc if modified
 [[ "$HOME/.zshrc" -nt "$HOME/.zshrc.zwc" ]] && zcompile "$HOME/.zshrc"

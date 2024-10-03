@@ -1,5 +1,9 @@
 # Optimized chaos.zsh-theme, based on dogenpunk and smt
 
+# cache
+CHAOS_GIT_STATUS_CACHE_FILE="/tmp/chaos_git_status_$$"
+CHAOS_GIT_STATUS_CACHE_TIMEOUT=2 
+
 # Precompute static parts of the prompt
 _CHAOS_USER_HOST="%F{green}%B%n@%m%b%f"
 _CHAOS_PATH="%F{cyan}%~%f"
@@ -59,36 +63,31 @@ _chaos_git_status() {
 }
 
 _chaos_git_prompt_status() {
-  local STATUS=""
-  local -a FLAGS
-  FLAGS=('--porcelain')
-  
-  if [[ "$(command git config --get oh-my-zsh.hide-status 2>/dev/null)" != "1" ]]; then
-    FLAGS+='--branch'
+  if git rev-parse --is-inside-work-tree &>/dev/null; then
+    local current_time=$(date +%s)
+    if [[ -f "$CHAOS_GIT_STATUS_CACHE_FILE" ]] && (( current_time - $(stat -c %Y "$CHAOS_GIT_STATUS_CACHE_FILE") < CHAOS_GIT_STATUS_CACHE_TIMEOUT )); then
+      cat "$CHAOS_GIT_STATUS_CACHE_FILE"
+    else
+      local STATUS=""
+      local git_status="$(git status --porcelain 2>/dev/null)"
+      if [[ -n $git_status ]]; then
+        echo "$git_status" | while IFS= read -r line; do
+          case ${line:0:2} in
+            "??") STATUS+="$_CHAOS_GIT_UNTRACKED"; break;;
+            [MADRCU]" ") STATUS+="$_CHAOS_GIT_MODIFIED"; break;;
+            " "[MADRCU]) STATUS+="$_CHAOS_GIT_MODIFIED"; break;;
+          esac
+        done
+        STATUS+="$_CHAOS_GIT_DIRTY"
+      else
+        STATUS="$_CHAOS_GIT_CLEAN"
+      fi
+      if [[ -n $(git rev-list --count --left-right @{upstream}...HEAD 2>/dev/null) ]]; then
+        STATUS+="$_CHAOS_GIT_AHEAD"
+      fi
+      echo "$STATUS" | tee "$CHAOS_GIT_STATUS_CACHE_FILE"
+    fi
   fi
-  
-  local git_status="$(command git status ${FLAGS} 2> /dev/null | tail -n1)"
-  
-  if [[ -n $git_status ]]; then
-    STATUS="$ZSH_THEME_GIT_PROMPT_DIRTY"
-  else
-    STATUS="$ZSH_THEME_GIT_PROMPT_CLEAN"
-  fi
-  
-  if $(echo "$git_status" | grep '^## [^ ]\+ .*ahead' &> /dev/null); then
-    STATUS="$STATUS$_CHAOS_GIT_AHEAD"
-  fi
-  
-  echo "$git_status" | while IFS= read -r line; do
-    if [[ $line == " M "* ]]; then STATUS="$STATUS$_CHAOS_GIT_MODIFIED"; fi
-    if [[ $line == "?? "* ]]; then STATUS="$STATUS$_CHAOS_GIT_UNTRACKED"; fi
-    if [[ $line == " D "* ]]; then STATUS="$STATUS$_CHAOS_GIT_DELETED"; fi
-    if [[ $line == "R  "* ]]; then STATUS="$STATUS$_CHAOS_GIT_RENAMED"; fi
-    if [[ $line == "A  "* ]]; then STATUS="$STATUS$_CHAOS_GIT_ADDED"; fi
-    if [[ $line == "UU "* ]]; then STATUS="$STATUS$_CHAOS_GIT_UNMERGED"; fi
-  done
-  
-  echo $STATUS
 }
 
 _chaos_git_prompt() {
