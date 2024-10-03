@@ -1,62 +1,89 @@
 # oh my zsh
+set -o noglobdots
+set -o noglobalrcs
 
+# Oh My Zsh configuration
 export ZSH="$HOME/.oh-my-zsh"
 ZSH_THEME="chaos"
 plugins=(git)
-source $ZSH/oh-my-zsh.sh
-bindkey -v
+
+# Function to improve performance
+zsh_optimized_setup() {
+  autoload -Uz compinit promptinit
+  for dump in ~/.zcompdump(N.mh+24); do
+    compinit
+  done
+  compinit -C
+  promptinit
+}
 
 # Autoenv setup
-# Lazy load autoenv only when entering a directory that contains a .env file
 autoload -Uz add-zsh-hook
 auto_source_venv() {
-  if [[ -d .venv ]]; then
-    source .venv/bin/activate
-  elif [[ -d venv ]]; then
-    source venv/bin/activate
-  fi
+  local venv_dir
+  for venv_dir in .venv venv; do
+    if [[ -d $venv_dir ]]; then
+      source "$venv_dir/bin/activate"
+      return
+    fi
+  done
 }
 add-zsh-hook chpwd auto_source_venv
 
-# Custom aliases and environment variables
-EDITOR=nvim
+# Environment variables
+export EDITOR=nvim
+export GPG_TTY=$(tty)
+export SSH_AUTH_SOCK=/run/user/1000/ssh-agent.socket
+export XDG_RUNTIME_DIR=/run/user/1000
+export PULSE_RUNTIME_PATH=/run/user/1000/pulse
+export NIX_PATH=nixpkgs=https://nixos.org/channels/nixos-unstable
+export NVM_DIR="$HOME/.nvm"
+
+# PATH adjustments (use typeset for efficiency)
+typeset -U path
+path=(
+  $path
+  $HOME/.cargo/bin
+  $HOME/go/bin
+  $HOME/.bun/bin
+  $HOME/.local/bin
+  /usr/lib/node_modules/.bin
+  $HOME/.npm-global/bin
+)
+
+# Aliases
 alias vi=nvim
 alias lx=lsix
 alias x=joshuto
 alias rotko="cd ~/rotko/unlabored/"
 alias config="cd ~/rotko/config/"
 alias rbl='cd ~/rome/environments/ansible/'
-export SSH_AUTH_SOCK=/run/user/1000/ssh-agent.socket
 
-# PATH adjustments
-export PATH=$PATH:~/.cargo/bin/:$HOME/go/bin
-export PATH="$HOME/.bun/bin:$PATH"
+# Key bindings
+bindkey -v
+bindkey '^Z' vi-cmd-mode
 
-# GPG setup
-export GPG_TTY=$(tty)
+# Conditional sources (use [[ for better performance)
+[[ -s "$HOME/.bun/_bun" ]] && source "$HOME/.bun/_bun"
+[[ -s "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
+[[ -e "$HOME/.nix-profile/etc/profile.d/nix.sh" ]] && source "$HOME/.nix-profile/etc/profile.d/nix.sh"
 
-# Bun completions (load only if needed)
-if [ -s "$HOME/.bun/_bun" ]; then
-  source "$HOME/.bun/_bun"
+# NVM setup (consider lazy loading for better performance)
+if [[ -s "$NVM_DIR/nvm.sh" ]]; then
+  # Lazy load NVM
+  nvm() {
+    unset -f nvm
+    source "$NVM_DIR/nvm.sh"
+    source "$NVM_DIR/bash_completion"
+    nvm "$@"
+  }
 fi
 
-# Load Cargo environment
-. "$HOME/.cargo/env"
-
-# Functions to improve performance
-zsh_optimized_setup() {
-  autoload -U compinit
-  compinit -u
-
-  autoload -U promptinit
-  promptinit
-}
-
+# Run optimized setup
 zsh_optimized_setup
-export PATH=$PATH:/usr/lib/node_modules/.bin
 
-# bun completions
-[ -s "/home/user/.bun/_bun" ] && source "/home/user/.bun/_bun"
-export PATH=$HOME/.local/bin:$PATH
-export XDG_RUNTIME_DIR=/run/user/1000
-export PULSE_RUNTIME_PATH=/run/user/1000/pulse
+# Load Oh My Zsh
+source $ZSH/oh-my-zsh.sh
+
+# Performance: Compile zshrc if modified
+[[ "$HOME/.zshrc" -nt "$HOME/.zshrc.zwc" ]] && zcompile "$HOME/.zshrc"
