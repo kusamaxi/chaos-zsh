@@ -1,5 +1,4 @@
 # Optimized chaos.zsh-theme, based on dogenpunk and smt
-# Includes performance improvements and error code emojis
 
 # Precompute static parts of the prompt
 _CHAOS_USER_HOST="%F{green}%B%n@%m%b%f"
